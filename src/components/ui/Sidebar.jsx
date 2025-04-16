@@ -4,9 +4,10 @@ const Sidebar = ({ onSelect }) => {
   const items = [
     { label: "Principal", key: "stats" },
     { label: "Añadir alumno", key: "add" },
-    { label: "Alumnos pendientes", key: "pendientes" },
-    { label: "Alumnos matriculados", key: "matriculados" }
+    { label: "Alumnos pendientes", key: "pendiente" }, // ✅
+    { label: "Alumnos matriculados", key: "matriculado" }, // ✅
   ];
+  
 
   return (
     <div className="w-60 h-screen bg-gray-900 text-white flex flex-col p-4 space-y-4">

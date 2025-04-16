@@ -12,10 +12,10 @@ export default function App() {
       case "stats":
         return <Stats />;
       case "add":
-        return <AddAlumno />;
-      case "pendientes":
+        return <AlumnoTable estado="form" />;
+      case "pendiente": // ✅ sin "s"
         return <AlumnoTable estado="pendiente" />;
-      case "matriculados":
+      case "matriculado": // ✅ sin "s"
         return <AlumnoTable estado="matriculado" />;
       default:
         return <Stats />;
