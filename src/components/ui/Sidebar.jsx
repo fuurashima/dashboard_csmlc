@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 
-export default function Sidebar({ onSelect }) {
+const Sidebar = ({ onSelect }) => {
   const items = [
-    { label: 'Principal', key: 'stats' },
-    { label: 'Añadir alumno', key: 'add' },
-    { label: 'Alumnos pendientes', key: 'pendientes' },
-    { label: 'Alumnos matriculados', key: 'matriculados' },
+    { label: "Principal", key: "stats" },
+    { label: "Añadir alumno", key: "add" },
+    { label: "Alumnos pendientes", key: "pendientes" },
+    { label: "Alumnos matriculados", key: "matriculados" }
   ];
 
   return (
@@ -22,4 +22,6 @@ export default function Sidebar({ onSelect }) {
       ))}
     </div>
   );
-}
+};
+
+export default Sidebar;

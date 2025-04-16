@@ -1,24 +1,31 @@
-import React, { useState } from 'react';
-import Sidebar from './components/ui/Sidebar';
-import Stats from './components/Stats';
-import AlumnoTable from './components/AlumnoTable';
-import Login from './components/Login';
+import React, { useState } from "react";
+import Sidebar from "@/components/ui/Sidebar";
+import Stats from "@/components/Stats";
+import AddAlumno from "@/components/AddAlumno";
+import AlumnoTable from "@/components/AlumnoTable";
 
 export default function App() {
-  const [view, setView] = useState('stats');
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [view, setView] = useState("stats");
 
-  if (!token) return <Login setToken={setToken} />;
+  const renderView = () => {
+    switch (view) {
+      case "stats":
+        return <Stats />;
+      case "add":
+        return <AddAlumno />;
+      case "pendientes":
+        return <AlumnoTable estado="pendiente" />;
+      case "matriculados":
+        return <AlumnoTable estado="matriculado" />;
+      default:
+        return <Stats />;
+    }
+  };
 
   return (
     <div className="flex">
       <Sidebar onSelect={setView} />
-      <main className="flex-1 p-6">
-        {view === 'stats' && <Stats token={token} />}
-        {view === 'pendientes' && <AlumnoTable token={token} estado="pendiente" />}
-        {view === 'matriculados' && <AlumnoTable token={token} estado="matriculado" />}
-        {view === 'add' && <AlumnoTable token={token} estado="form" />}
-      </main>
+      <main className="flex-1 p-4">{renderView()}</main>
     </div>
   );
 }

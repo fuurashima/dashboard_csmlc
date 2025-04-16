@@ -1,9 +1,6 @@
-// src/components/ui/card.jsx
-export function Card({ children, className = "" }) {
-    return (
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 ${className}`}>
-        {children}
-      </div>
-    );
-  }
+export const Card = ({ children }) => (
+    <div className="bg-white rounded-lg shadow p-4">{children}</div>
+  );
+  
+  export const CardContent = ({ children }) => <div>{children}</div>;
   
