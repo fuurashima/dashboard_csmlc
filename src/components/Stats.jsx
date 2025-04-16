@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Card, CardContent } from './ui/card';
 
-function Stats({ token }) {
-  const [data, setData] = useState([]);
+export default function Stats({ token }) {
+  const [stats, setStats] = useState([]);
+  const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_URL}/api/estadisticas`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setData(res.data));
-  }, [token]);
+    axios.get('/api/estadisticas', { headers }).then(res => setStats(res.data));
+  }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {data.map((item, i) => (
-        <div key={i} className="p-4 border bg-white shadow">
-          <h3 className="font-semibold">{item.curso}</h3>
-          <p>{item.estado_matricula}: {item.total}</p>
-        </div>
+    <div className="grid grid-cols-3 gap-4">
+      {stats.map((s, i) => (
+        <Card key={i}>
+          <CardContent>
+            <strong>{s.curso}</strong><br />
+            {s.estado_matricula}: {s.total}
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
 }
-
-export default Stats;
