@@ -1,71 +1,147 @@
-// src/pages/Dashboard.jsx
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+// ✅ Backend con seguridad mejorada, logs útiles y validación básica
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2/promise');
+const jwt = require('jsonwebtoken');
 
-const API_URL = import.meta.env.VITE_API_URL;
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-function Dashboard() {
-  const [alumnos, setAlumnos] = useState([]);
-  const [estadisticas, setEstadisticas] = useState([]);
+const dbConfig = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+};
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
+// 🔐 Middleware de autenticación
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Token requerido' });
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch (error) {
+    console.error('❌ Error al verificar token:', error.message);
+    res.status(403).json({ message: 'Token inválido' });
+  }
+};
 
-    axios.get(`${API_URL}/api/alumnos`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then(res => setAlumnos(res.data))
-    .catch(err => console.error('Error al cargar alumnos:', err));
+// 🔐 Login (no protegido)
+app.post('/api/login', (req, res) => {
+  const { user, pass } = req.body;
+  if (user === process.env.ADMIN_USER && pass === process.env.ADMIN_PASS) {
+    const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '2h' });
+    return res.json({ token });
+  }
+  res.status(401).json({ message: 'Credenciales inválidas' });
+});
 
-    axios.get(`${API_URL}/api/estadisticas`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then(res => setEstadisticas(res.data))
-    .catch(err => console.error('Error al cargar estadísticas:', err));
-  }, []);
+// ✅ Registrar alumno (protegido)
+app.post('/api/alumnos', authMiddleware, async (req, res) => {
+  const {
+    nombre_alumno,
+    curso,
+    nombre_apoderado,
+    telefono_apoderado,
+    email_apoderado,
+    medio_conocimiento,
+    estado_matricula = 'pendiente',
+    rut
+  } = req.body;
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Dashboard CSMLC</h1>
+  console.log('📥 Body recibido en /api/alumnos:', req.body);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {estadisticas.map((stat, i) => (
-          <div key={i} className="border p-4 rounded shadow-sm">
-            <p className="font-bold">{stat.curso}</p>
-            <p>{stat.estado_matricula}: {stat.total}</p>
-          </div>
-        ))}
-      </div>
+  // Validación básica
+  if (!nombre_alumno || !curso || !nombre_apoderado || !rut) {
+    return res.status(400).json({ message: 'Faltan campos obligatorios.' });
+  }
 
-      <h2 className="text-xl font-semibold mb-2">Listado de alumnos</h2>
-      <table className="w-full table-auto border">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-2">Nombre</th>
-            <th className="px-4 py-2">Curso</th>
-            <th className="px-4 py-2">Apoderado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {alumnos.length > 0 ? (
-            alumnos.map((al, i) => (
-              <tr key={i} className="text-center border-t">
-                <td className="px-4 py-2">{al.nombre_alumno}</td>
-                <td className="px-4 py-2">{al.curso}</td>
-                <td className="px-4 py-2">{al.nombre_apoderado}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="3" className="text-center py-4 text-gray-500">
-                No hay alumnos registrados aún.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.execute(
+      `INSERT INTO alumnos (nombre_alumno, curso, nombre_apoderado, telefono_apoderado, email_apoderado, medio_conocimiento, estado_matricula, rut)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nombre_alumno, curso, nombre_apoderado, telefono_apoderado, email_apoderado, medio_conocimiento, estado_matricula, rut]
+    );
+    await connection.end();
+    res.json({ message: 'Alumno registrado correctamente.' });
+  } catch (error) {
+    console.error('❌ Error SQL:', error);
+    res.status(500).json({ message: 'Error al registrar alumno.' });
+  }
+});
 
-export default Dashboard;
+// 📊 Obtener estadísticas (protegido)
+app.get('/api/estadisticas', authMiddleware, async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      `SELECT curso, estado_matricula, COUNT(*) as total FROM alumnos GROUP BY curso, estado_matricula`
+    );
+    await connection.end();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas:', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas.' });
+  }
+});
+
+// 📋 Obtener alumnos por estado de matrícula
+app.get('/api/alumnos/:estado', authMiddleware, async (req, res) => {
+  const estado = req.params.estado;
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      `SELECT * FROM alumnos WHERE estado_matricula = ?`,
+      [estado]
+    );
+    await connection.end();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ Error al obtener alumnos:', error);
+    res.status(500).json({ message: 'Error al obtener alumnos.' });
+  }
+});
+
+// 🔄 Cambiar estado de matrícula
+app.put('/api/alumnos/:id/estado', authMiddleware, async (req, res) => {
+  const id = req.params.id;
+  const { estado_matricula } = req.body;
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.execute(
+      `UPDATE alumnos SET estado_matricula = ? WHERE id = ?`,
+      [estado_matricula, id]
+    );
+    await connection.end();
+    res.json({ message: 'Estado de matrícula actualizado.' });
+  } catch (error) {
+    console.error('❌ Error al actualizar estado:', error);
+    res.status(500).json({ message: 'Error al actualizar estado.' });
+  }
+});
+
+// 🔍 Buscar alumno por nombre o rut
+app.get('/api/buscar', authMiddleware, async (req, res) => {
+  const { query } = req.query;
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      `SELECT * FROM alumnos WHERE nombre_alumno LIKE ? OR rut LIKE ?`,
+      [`%${query}%`, `%${query}%`]
+    );
+    await connection.end();
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ Error en búsqueda:', error);
+    res.status(500).json({ message: 'Error al buscar alumno.' });
+  }
+});
+
+// 🚀 Puerto
+app.listen(process.env.PORT || 3001, () => {
+  console.log('✅ Servidor corriendo en el puerto', process.env.PORT || 3001);
+});
