@@ -9,17 +9,26 @@ export default function AlumnoTable({ estado }) {
   const [alumnos, setAlumnos] = useState([]);
   const [query, setQuery] = useState('');
   const [nuevo, setNuevo] = useState({});
-
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
-    if (estado === 'form') return;
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) {
+      console.warn('⚠️ No hay token disponible en localStorage');
+      return;
+    }
+    setToken(storedToken);
+  }, []);
+
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  useEffect(() => {
+    if (estado === 'form' || !token) return;
     axios
       .get(`${API_URL}/api/alumnos/${estado}`, { headers })
       .then(res => setAlumnos(res.data))
       .catch(err => console.error('❌ Error cargando alumnos:', err));
-  }, [estado]);
+  }, [estado, token]);
 
   const buscar = async () => {
     try {
@@ -49,6 +58,10 @@ export default function AlumnoTable({ estado }) {
       console.error('❌ Error al registrar alumno:', err);
     }
   };
+
+  if (!token) {
+    return <div className="text-red-500 font-semibold">No autorizado. Por favor, inicia sesión.</div>;
+  }
 
   if (estado === 'form') {
     return (
