@@ -3,32 +3,51 @@ import axios from 'axios';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 
-export default function AlumnoTable({ token, estado }) {
+const API_URL = import.meta.env.VITE_API_URL;
+
+export default function AlumnoTable({ estado }) {
   const [alumnos, setAlumnos] = useState([]);
   const [query, setQuery] = useState('');
   const [nuevo, setNuevo] = useState({});
+
+  const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     if (estado === 'form') return;
-    axios.get(`/api/alumnos/${estado}`, { headers }).then(res => setAlumnos(res.data));
+    axios
+      .get(`${API_URL}/api/alumnos/${estado}`, { headers })
+      .then(res => setAlumnos(res.data))
+      .catch(err => console.error('❌ Error cargando alumnos:', err));
   }, [estado]);
 
   const buscar = async () => {
-    const res = await axios.get(`/api/buscar?query=${query}`, { headers });
-    setAlumnos(res.data);
+    try {
+      const res = await axios.get(`${API_URL}/api/buscar?query=${query}`, { headers });
+      setAlumnos(res.data);
+    } catch (err) {
+      console.error('❌ Error en búsqueda:', err);
+    }
   };
 
   const cambiarEstado = async (id, estado_matricula) => {
-    await axios.put(`/api/alumnos/${id}/estado`, { estado_matricula }, { headers });
-    const res = await axios.get(`/api/alumnos/pendiente`, { headers });
-    setAlumnos(res.data);
+    try {
+      await axios.put(`${API_URL}/api/alumnos/${id}/estado`, { estado_matricula }, { headers });
+      const res = await axios.get(`${API_URL}/api/alumnos/pendiente`, { headers });
+      setAlumnos(res.data);
+    } catch (err) {
+      console.error('❌ Error al cambiar estado:', err);
+    }
   };
 
   const registrar = async () => {
-    await axios.post('/api/alumnos', nuevo, { headers });
-    alert('Alumno registrado.');
-    setNuevo({});
+    try {
+      await axios.post(`${API_URL}/api/alumnos`, nuevo, { headers });
+      alert('Alumno registrado.');
+      setNuevo({});
+    } catch (err) {
+      console.error('❌ Error al registrar alumno:', err);
+    }
   };
 
   if (estado === 'form') {
@@ -54,7 +73,13 @@ export default function AlumnoTable({ token, estado }) {
       </div>
       <table className="w-full border">
         <thead>
-          <tr className="bg-gray-100"><th>Nombre</th><th>Curso</th><th>Apoderado</th><th>Estado</th><th>Acción</th></tr>
+          <tr className="bg-gray-100">
+            <th>Nombre</th>
+            <th>Curso</th>
+            <th>Apoderado</th>
+            <th>Estado</th>
+            <th>Acción</th>
+          </tr>
         </thead>
         <tbody>
           {alumnos.map((a) => (
